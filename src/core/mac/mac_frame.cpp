@@ -1408,10 +1408,33 @@ void TxFrame::ProcessTransmitAesCcm(const ExtAddress &aExtAddress)
     aesCcm.SetKey(GetAesKey());
     tagLength = GetFooterLength() - GetFcsSize();
 
+#if OPENTHREAD_CONFIG_HARDWARE_AES_CCM
+    psa_status_t status;
+    psa_key_id_t key_ref;
+    uint32_t output_len;
+
+	/* Encrypt the plaintext and create the authentication tag */
+    aesCcm.GetKeyId(key_ref);
+	status = psa_aead_encrypt(key_ref,
+							  PSA_ALG_AEAD_WITH_SHORTENED_TAG(PSA_ALG_CCM, tagLength),
+							  nonce,
+							  sizeof(nonce),
+							  GetHeader(),
+							  GetHeaderLength(),
+							  GetPayload(),
+							  GetPayloadLength(),
+							  GetPayload(),
+							  GetPayloadLength() + tagLength,
+							  &output_len);
+	if (status != PSA_SUCCESS) {
+		goto exit;
+	}
+#else // !OPENTHREAD_CONFIG_HARDWARE_AES_CCM
     aesCcm.Init(GetHeaderLength(), GetPayloadLength(), tagLength, nonce, sizeof(nonce));
     aesCcm.Header(GetHeader(), GetHeaderLength());
     aesCcm.Payload(GetPayload(), GetPayload(), GetPayloadLength(), Crypto::AesCcm::kEncrypt);
     aesCcm.Finalize(GetFooter());
+#endif // OPENTHREAD_CONFIG_HARDWARE_AES_CCM
 
     SetIsSecurityProcessed(true);
 
@@ -1544,6 +1567,28 @@ Error RxFrame::ProcessReceiveAesCcm(const ExtAddress &aExtAddress, const KeyMate
     aesCcm.SetKey(aMacKey);
     tagLength = GetFooterLength() - GetFcsSize();
 
+#if OPENTHREAD_CONFIG_HARDWARE_AES_CCM
+	psa_status_t status;
+    psa_key_id_t key_ref;
+    uint32_t output_len;
+
+    aesCcm.GetKeyId(key_ref);
+	/* Decrypt the encrypted data and authenticate the tag */
+	status = psa_aead_decrypt(key_ref,
+							  PSA_ALG_AEAD_WITH_SHORTENED_TAG(PSA_ALG_CCM, tagLength),
+							  nonce,
+							  sizeof(nonce),
+							  GetHeader(),
+							  GetHeaderLength(),
+                              GetPayload(),
+							  GetPayloadLength() + tagLength,
+							  GetPayload(),
+							  GetPayloadLength(),
+							  &output_len);
+	if (status != PSA_SUCCESS) {
+		goto exit;
+	}
+#else //!OPENTHREAD_CONFIG_HARDWARE_AES_CCM
     aesCcm.Init(GetHeaderLength(), GetPayloadLength(), tagLength, nonce, sizeof(nonce));
     aesCcm.Header(GetHeader(), GetHeaderLength());
 #ifndef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
@@ -1558,6 +1603,7 @@ Error RxFrame::ProcessReceiveAesCcm(const ExtAddress &aExtAddress, const KeyMate
 #ifndef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
     VerifyOrExit(memcmp(tag, GetFooter(), tagLength) == 0);
 #endif
+#endif // OPENTHREAD_CONFIG_HARDWARE_AES_CCM
 
     error = kErrorNone;
 

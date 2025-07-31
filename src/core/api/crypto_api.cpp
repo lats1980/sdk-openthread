@@ -78,6 +78,8 @@ void otCryptoAesCcm(const otCryptoKey *aKey,
     AssertPointerIsNotNull(aTag);
 
     aesCcm.SetKey(AsCoreType(aKey));
+#if OPENTHREAD_CONFIG_HARDWARE_AES_CCM
+#else
     aesCcm.Init(aHeaderLength, aLength, aTagLength, aNonce, aNonceLength);
 
     if (aHeaderLength != 0)
@@ -88,4 +90,5 @@ void otCryptoAesCcm(const otCryptoKey *aKey,
 
     aesCcm.Payload(aPlainText, aCipherText, aLength, aEncrypt ? AesCcm::kEncrypt : AesCcm::kDecrypt);
     aesCcm.Finalize(aTag);
+#endif
 }

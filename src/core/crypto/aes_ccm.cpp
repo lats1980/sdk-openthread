@@ -56,6 +56,35 @@ void AesCcm::SetKey(const Mac::KeyMaterial &aMacKey)
     SetKey(cryptoKey);
 }
 
+#if OPENTHREAD_CONFIG_HARDWARE_AES_CCM
+void AesCcm::SetKey(const Key &aKey)
+{
+    SuccessOrAssert(otPlatCryptoAesSetKey(&mContext, &aKey));
+}
+
+otError AesCcm::GetKeyId(psa_key_id_t &aKeyId)
+{
+    psa_key_id_t key_ref;
+	memcpy(&key_ref, mContext.mContext, sizeof(psa_key_id_t));
+	//GET_KEY_REF(&key_ref, NULL);
+    if (key_ref == 0)
+    {
+        return kErrorInvalidArgs; // No key set
+    }
+
+    aKeyId = key_ref;
+    return kErrorNone;
+}
+
+AesCcm::AesCcm(void)
+{
+    mContext.mContext     = mContextStorage;
+    mContext.mContextSize = sizeof(mContextStorage);
+    SuccessOrAssert(otPlatCryptoAesInit(&mContext));
+}
+
+AesCcm::~AesCcm(void) { SuccessOrAssert(otPlatCryptoAesFree(&mContext)); }
+#else // !OPENTHREAD_CONFIG_HARDWARE_AES_CCM
 void AesCcm::Init(uint32_t    aHeaderLength,
                   uint32_t    aPlainTextLength,
                   uint8_t     aTagLength,
@@ -274,6 +303,7 @@ void AesCcm::Finalize(void *aTag)
         tagBytes[i] = mBlock[i] ^ mCtrPad[i];
     }
 }
+#endif // CONFIG_OPENTHREAD_HARDWARE_AES_CCM
 
 void AesCcm::GenerateNonce(const Mac::ExtAddress &aAddress,
                            uint32_t               aFrameCounter,

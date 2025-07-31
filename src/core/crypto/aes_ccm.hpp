@@ -77,6 +77,21 @@ public:
         kDecrypt, // Decryption mode.
     };
 
+#if OPENTHREAD_CONFIG_HARDWARE_AES_CCM
+    void SetKey(const Key &aKey);
+    otError GetKeyId(psa_key_id_t &aKeyId);
+    /**
+     * Constructor to initialize the AES operation.
+     *
+     */
+    AesCcm(void);
+
+    /**
+     * Destructor to free the AES context.
+     *
+     */
+    ~AesCcm(void);
+#else
     /**
      * Sets the key.
      *
@@ -84,6 +99,7 @@ public:
      *
      */
     void SetKey(const Key &aKey) { mEcb.SetKey(aKey); }
+#endif
 
     /**
      * Sets the key.
@@ -102,6 +118,8 @@ public:
      */
     void SetKey(const Mac::KeyMaterial &aMacKey);
 
+#if OPENTHREAD_CONFIG_HARDWARE_AES_CCM
+#else
     /**
      * Initializes the AES CCM computation.
      *
@@ -183,7 +201,7 @@ public:
      *
      */
     void Finalize(void *aTag);
-
+#endif // CONFIG_OPENTHREAD_HARDWARE_AES_CCM
     /**
      * Generates IEEE 802.15.4 nonce byte sequence.
      *
@@ -199,6 +217,10 @@ public:
                               uint8_t               *aNonce);
 
 private:
+#if OPENTHREAD_CONFIG_HARDWARE_AES_CCM
+    otCryptoContext mContext;
+    OT_DEFINE_ALIGNED_VAR(mContextStorage, kAesContextSize, uint64_t);
+#else
     AesEcb   mEcb;
     uint8_t  mBlock[AesEcb::kBlockSize];
     uint8_t  mCtr[AesEcb::kBlockSize];
@@ -211,6 +233,7 @@ private:
     uint16_t mCtrLength;
     uint8_t  mNonceLength;
     uint8_t  mTagLength;
+#endif // CONFIG_OPENTHREAD_HARDWARE_AES_CCM
 };
 
 /**

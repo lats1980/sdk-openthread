@@ -328,11 +328,19 @@ void KeyMaterial::SetFrom(const Key &aKey, bool aIsExportable)
 
         DestroyKey();
 
+#if OPENTHREAD_CONFIG_HARDWARE_AES_CCM
+        SuccessOrAssert(Crypto::Storage::ImportKey(keyRef, Crypto::Storage::kKeyTypeAes,
+                                                   Crypto::Storage::kKeyAlgorithmAesCcmTag4,
+                                                   (aIsExportable ? Crypto::Storage::kUsageExport : 0) |
+                                                       Crypto::Storage::kUsageEncrypt | Crypto::Storage::kUsageDecrypt,
+                                                   Crypto::Storage::kTypeVolatile, aKey.GetBytes(), Key::kSize));
+#else
         SuccessOrAssert(Crypto::Storage::ImportKey(keyRef, Crypto::Storage::kKeyTypeAes,
                                                    Crypto::Storage::kKeyAlgorithmAesEcb,
                                                    (aIsExportable ? Crypto::Storage::kUsageExport : 0) |
                                                        Crypto::Storage::kUsageEncrypt | Crypto::Storage::kUsageDecrypt,
                                                    Crypto::Storage::kTypeVolatile, aKey.GetBytes(), Key::kSize));
+#endif
 
         SetKeyRef(keyRef);
     }

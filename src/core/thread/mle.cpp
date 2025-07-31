@@ -59,6 +59,9 @@
 #include "thread/thread_netif.hpp"
 #include "thread/time_sync_service.hpp"
 #include "thread/version.hpp"
+#if OPENTHREAD_CONFIG_HARDWARE_AES_CCM
+#include "common/message.hpp"
+#endif
 
 namespace ot {
 namespace Mle {
@@ -2358,6 +2361,72 @@ Error Mle::ProcessMessageSecurity(Crypto::AesCcm::Mode    aMode,
                       ? Get<KeyManager>().GetCurrentMleKey()
                       : Get<KeyManager>().GetTemporaryMleKey(keySequence));
 
+#if OPENTHREAD_CONFIG_HARDWARE_AES_CCM
+    psa_status_t status;
+    psa_key_id_t key_ref;
+    uint32_t output_len;
+    uint8_t header_len;
+    uint8_t header[OT_RADIO_FRAME_MAX_SIZE];
+    uint8_t m_plain_text[OT_RADIO_FRAME_MAX_SIZE];
+    uint8_t m_cipher_text[OT_RADIO_FRAME_MAX_SIZE];
+    const uint8_t *senderBytes;
+    const uint8_t *receiverBytes;
+    const uint8_t *headerBytes;
+    uint16_t cipherLength;
+
+    header_len = sizeof(Ip6::Address) + sizeof(Ip6::Address) + sizeof(SecurityHeader);
+    senderBytes = reinterpret_cast<const uint8_t *>(senderAddress);
+    receiverBytes = reinterpret_cast<const uint8_t *>(receiverAddress);
+    headerBytes = reinterpret_cast<const uint8_t *>(&aHeader);
+    memcpy(header, senderBytes, sizeof(Ip6::Address));
+    memcpy(header + sizeof(Ip6::Address), receiverBytes, sizeof(Ip6::Address));
+    memcpy(header + sizeof(Ip6::Address) + sizeof(Ip6::Address), headerBytes, sizeof(SecurityHeader));
+
+    aesCcm.GetKeyId(key_ref);
+    if (aMode == Crypto::AesCcm::kEncrypt)
+    {
+        aMessage.Read(aCmdOffset, m_plain_text, payloadLength);
+        cipherLength = payloadLength + kMleSecurityTagSize;
+        status = psa_aead_encrypt(key_ref,
+                                PSA_ALG_AEAD_WITH_SHORTENED_TAG(PSA_ALG_CCM, kMleSecurityTagSize),
+                                nonce,
+                                sizeof(nonce),
+                                header,
+                                header_len,
+                                m_plain_text,
+                                payloadLength,
+                                m_cipher_text,
+                                cipherLength,
+                                &output_len);
+        if (status != PSA_SUCCESS) {
+            error = kErrorFailed;
+        } else {
+            memcpy(tag, m_cipher_text + payloadLength, kMleSecurityTagSize);
+            aMessage.WriteBytes(aCmdOffset, m_cipher_text, payloadLength);
+            SuccessOrExit(error = aMessage.Append(tag));
+        }
+    } else {
+        cipherLength = payloadLength + kMleSecurityTagSize;
+        aMessage.Read(aCmdOffset, m_cipher_text, cipherLength);
+        status = psa_aead_decrypt(key_ref,
+                                PSA_ALG_AEAD_WITH_SHORTENED_TAG(PSA_ALG_CCM, kMleSecurityTagSize),
+                                nonce,
+                                sizeof(nonce),
+                                header,
+                                header_len,
+                                m_cipher_text,
+                                cipherLength,
+                                m_plain_text,
+                                payloadLength,
+                                &output_len);
+        if (status != PSA_SUCCESS) {
+            error = kErrorFailed;
+        } else {
+            aMessage.WriteBytes(aCmdOffset, m_plain_text, payloadLength);
+            aMessage.RemoveFooter(kMleSecurityTagSize);
+        }
+     }
+#else // !OPENTHREAD_CONFIG_HARDWARE_AES_CCM
     aesCcm.Init(sizeof(Ip6::Address) + sizeof(Ip6::Address) + sizeof(SecurityHeader), payloadLength,
                 kMleSecurityTagSize, nonce, sizeof(nonce));
 
@@ -2386,6 +2455,7 @@ Error Mle::ProcessMessageSecurity(Crypto::AesCcm::Mode    aMode,
         VerifyOrExit(aMessage.Compare(aMessage.GetLength() - kMleSecurityTagSize, tag), error = kErrorSecurity);
         aMessage.RemoveFooter(kMleSecurityTagSize);
     }
+#endif // OPENTHREAD_CONFIG_HARDWARE_AES_CCM
 
 exit:
     return error;

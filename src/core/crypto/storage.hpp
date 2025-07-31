@@ -70,6 +70,9 @@ enum KeyType : uint8_t
 enum KeyAlgorithm : uint8_t
 {
     kKeyAlgorithmVendor     = OT_CRYPTO_KEY_ALG_VENDOR,       ///< Key Algorithm: Vendor Defined.
+#if OPENTHREAD_CONFIG_HARDWARE_AES_CCM
+    kKeyAlgorithmAesCcmTag4 = OT_CRYPTO_KEY_ALG_AES_CCM_TAG4, ///< Key Algorithm: AES CCM with 4-byte authentication tag.
+#endif
     kKeyAlgorithmAesEcb     = OT_CRYPTO_KEY_ALG_AES_ECB,      ///< Key Algorithm: AES ECB.
     kKeyAlgorithmHmacSha256 = OT_CRYPTO_KEY_ALG_HMAC_SHA_256, ///< Key Algorithm: HMAC SHA-256.
     kKeyAlgorithmEcdsa      = OT_CRYPTO_KEY_ALG_ECDSA,        ///< Key Algorithm: ECDSA.

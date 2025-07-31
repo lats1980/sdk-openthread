@@ -73,6 +73,9 @@ typedef enum
 typedef enum
 {
     OT_CRYPTO_KEY_ALG_VENDOR,       ///< Key Algorithm: Vendor Defined.
+#if defined(CONFIG_OPENTHREAD_HARDWARE_AES_CCM)
+    OT_CRYPTO_KEY_ALG_AES_CCM_TAG4, ///< Key Algorithm: AES CCM with 4-byte authentication tag.
+#endif
     OT_CRYPTO_KEY_ALG_AES_ECB,      ///< Key Algorithm: AES ECB.
     OT_CRYPTO_KEY_ALG_HMAC_SHA_256, ///< Key Algorithm: HMAC SHA-256.
     OT_CRYPTO_KEY_ALG_ECDSA,        ///< Key Algorithm: ECDSA.
