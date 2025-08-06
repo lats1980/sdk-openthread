@@ -68,7 +68,7 @@ extern "C" {
 
 enum
 {
-    OT_RADIO_FRAME_MAX_SIZE = 127, ///< aMaxPHYPacketSize (IEEE 802.15.4-2006)
+    OT_RADIO_FRAME_MAX_SIZE = 697, ///< aMaxPHYPacketSize (IEEE 802.15.4-2006)
     OT_RADIO_FRAME_MIN_SIZE = 3,   ///< Minimal size of frame FCS + CONTROL
 
     OT_RADIO_SYMBOLS_PER_OCTET = 2,      ///< 2.4 GHz IEEE 802.15.4-2006
