@@ -1553,7 +1553,13 @@ Error RxFrame::ProcessReceiveAesCcm(const ExtAddress &aExtAddress, const KeyMate
     uint32_t       frameCounter = 0;
     uint8_t        securityLevel;
     uint8_t        nonce[Crypto::AesCcm::kNonceSize];
+#if OPENTHREAD_CONFIG_HARDWARE_AES_CCM
+    psa_status_t status;
+    psa_key_id_t key_ref;
+    uint32_t output_len;
+#else
     uint8_t        tag[kMaxMicSize];
+#endif
     uint8_t        tagLength;
     Crypto::AesCcm aesCcm;
 
@@ -1568,10 +1574,6 @@ Error RxFrame::ProcessReceiveAesCcm(const ExtAddress &aExtAddress, const KeyMate
     tagLength = GetFooterLength() - GetFcsSize();
 
 #if OPENTHREAD_CONFIG_HARDWARE_AES_CCM
-	psa_status_t status;
-    psa_key_id_t key_ref;
-    uint32_t output_len;
-
     aesCcm.GetKeyId(key_ref);
 	/* Decrypt the encrypted data and authenticate the tag */
 	status = psa_aead_decrypt(key_ref,

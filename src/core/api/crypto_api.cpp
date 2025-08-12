@@ -58,6 +58,7 @@ void otCryptoHmacSha256(const otCryptoKey *aKey, const uint8_t *aBuf, uint16_t a
     hmac.Finish(AsCoreType(aHash));
 }
 
+#if !OPENTHREAD_CONFIG_HARDWARE_AES_CCM
 void otCryptoAesCcm(const otCryptoKey *aKey,
                     uint8_t            aTagLength,
                     const void        *aNonce,
@@ -78,8 +79,6 @@ void otCryptoAesCcm(const otCryptoKey *aKey,
     AssertPointerIsNotNull(aTag);
 
     aesCcm.SetKey(AsCoreType(aKey));
-#if OPENTHREAD_CONFIG_HARDWARE_AES_CCM
-#else
     aesCcm.Init(aHeaderLength, aLength, aTagLength, aNonce, aNonceLength);
 
     if (aHeaderLength != 0)
@@ -90,5 +89,5 @@ void otCryptoAesCcm(const otCryptoKey *aKey,
 
     aesCcm.Payload(aPlainText, aCipherText, aLength, aEncrypt ? AesCcm::kEncrypt : AesCcm::kDecrypt);
     aesCcm.Finalize(aTag);
-#endif
 }
+#endif
